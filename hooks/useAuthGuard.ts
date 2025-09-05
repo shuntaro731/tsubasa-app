@@ -1,4 +1,4 @@
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../stores/authStore";
 import type { User } from "../types";
 import { isProfileComplete as checkProfileComplete } from "../utils/profileValidation";
 

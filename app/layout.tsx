@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "../contexts/AuthContext";
 import MainLayout from "../components/layout/MainLayout";
+import { ToastProvider } from "../components/ui/Toast";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import StoreInitializer from "../components/StoreInitializer";
 
 export const metadata: Metadata = {
   title: "塾予約システム",
@@ -16,11 +18,14 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="antialiased">
-        <AuthProvider>
-          <MainLayout>
-            {children}
-          </MainLayout>
-        </AuthProvider>
+        <ErrorBoundary>
+          <ToastProvider>
+            <StoreInitializer />
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </ToastProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

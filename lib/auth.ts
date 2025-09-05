@@ -12,29 +12,40 @@ import { createUser, getUser } from "./database/index"; // データベース操
 import type { User } from "firebase/auth";
 import type { User as AppUser } from "../types"; // アプリのUser型
 import { isProfileComplete } from "../utils/profileValidation";
+import { ErrorHandler } from "./errors/errorHandler";
+import { AuthError, DatabaseError } from "./errors/types";
 
 const googleProvider = new GoogleAuthProvider();
 
 // メールアドレスとパスワードでログイン
 export const signInWithEmail = async (email: string, password: string) => {
-  //試してみて（try）、もし失敗したら（catch）catchの処理をするというログインに失敗した場合の安全装置
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email,
       password
     );
-    return { success: true, user: userCredential.user }; //成功すればユーザー情報を返す
+    return { success: true, user: userCredential.user };
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'ログインに失敗しました';
-    return { success: false, error: errorMessage };
+    // 統一エラーハンドラーでエラーを処理
+    const authError = new AuthError(
+      `Email login failed: ${err}`,
+      undefined, // userMessageはErrorHandlerが自動生成
+      { email, action: 'signInWithEmail' }
+    );
+    
+    const result = ErrorHandler.handle(authError, {
+      logLevel: 'warn',
+      context: { email, action: 'signInWithEmail' }
+    });
+    
+    return { success: false, error: result.userMessage };
   }
 };
 
 // メールアドレスとパスワードで新規登録
 export const signUpWithEmail = async (email: string, password: string) => {
   try {
-    //createUserWithEmailAndPasswordによって新しいユーザーを登録する
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -46,8 +57,32 @@ export const signUpWithEmail = async (email: string, password: string) => {
     
     return { success: true, user: userCredential.user, isNewUser: true };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました';
-    return { success: false, error: errorMessage };
+    // 統一エラーハンドラーでエラーを処理
+    let handledError;
+    
+    if (error instanceof Error && error.message.includes('createUser')) {
+      // Firestore操作エラー
+      handledError = new DatabaseError(
+        `User creation failed: ${error}`,
+        'createUser',
+        'アカウント作成中にエラーが発生しました',
+        { email, action: 'signUpWithEmail' }
+      );
+    } else {
+      // 認証エラー
+      handledError = new AuthError(
+        `Email signup failed: ${error}`,
+        undefined,
+        { email, action: 'signUpWithEmail' }
+      );
+    }
+    
+    const result = ErrorHandler.handle(handledError, {
+      logLevel: 'error',
+      context: { email, action: 'signUpWithEmail' }
+    });
+    
+    return { success: false, error: result.userMessage };
   }
 };
 
@@ -68,8 +103,42 @@ export const signInWithGoogle = async () => {
     
     return { success: true, user: userCredential.user, isNewUser };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました';
-    return { success: false, error: errorMessage };
+    // 統一エラーハンドラーでエラーを処理
+    let handledError;
+    
+    if (error instanceof Error && (
+      error.message.includes('popup') || 
+      error.message.includes('cancelled')
+    )) {
+      // ポップアップ関連エラー
+      handledError = new AuthError(
+        `Google popup error: ${error}`,
+        'Googleログインがキャンセルされました',
+        { action: 'signInWithGoogle' }
+      );
+    } else if (error instanceof Error && error.message.includes('createUser')) {
+      // Firestore操作エラー
+      handledError = new DatabaseError(
+        `Google user creation failed: ${error}`,
+        'createUser',
+        'Googleアカウント連携中にエラーが発生しました',
+        { action: 'signInWithGoogle' }
+      );
+    } else {
+      // 一般的な認証エラー
+      handledError = new AuthError(
+        `Google login failed: ${error}`,
+        undefined,
+        { action: 'signInWithGoogle' }
+      );
+    }
+    
+    const result = ErrorHandler.handle(handledError, {
+      logLevel: 'warn',
+      context: { action: 'signInWithGoogle' }
+    });
+    
+    return { success: false, error: result.userMessage };
   }
 };
 
@@ -79,8 +148,19 @@ export const signOut = async () => {
     await firebaseSignOut(auth);
     return { success: true };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'エラーが発生しました';
-    return { success: false, error: errorMessage };
+    // 統一エラーハンドラーでエラーを処理
+    const authError = new AuthError(
+      `Logout failed: ${error}`,
+      'ログアウト処理でエラーが発生しました',
+      { action: 'signOut' }
+    );
+    
+    const result = ErrorHandler.handle(authError, {
+      logLevel: 'error',
+      context: { action: 'signOut' }
+    });
+    
+    return { success: false, error: result.userMessage };
   }
 };
 

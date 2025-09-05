@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { CustomCalendar } from './CustomCalendar';
 import { TimeSlotPicker } from './TimeSlotPicker';
 import { formatDate, type TimeSlot } from '../utils/timeUtils';
 import type { Reservation } from '../types';
+import { useToast } from './ui/Toast';
+import { ErrorHandler } from '../lib/errors/errorHandler';
+import { ValidationError } from '../lib/errors/types';
 
 interface SimpleBookingFormProps {
   onSubmit: (data: {
@@ -16,7 +19,7 @@ interface SimpleBookingFormProps {
   className?: string;
 }
 
-export const SimpleBookingForm = ({ 
+export const SimpleBookingForm = React.memo(({ 
   onSubmit, 
   existingReservations, 
   loading = false,
@@ -26,12 +29,19 @@ export const SimpleBookingForm = ({
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | undefined>();
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { showError, showSuccess } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedDate || !selectedTimeSlot) {
-      alert('日付と時間を選択してください');
+      const validationError = new ValidationError(
+        '日付または時間が未選択',
+        '日付と時間を選択してください',
+        'dateTime'
+      );
+      const result = ErrorHandler.handle(validationError, { logLevel: 'warn' });
+      showError(result.userMessage);
       return;
     }
 
@@ -50,9 +60,19 @@ export const SimpleBookingForm = ({
         setSelectedDate(undefined);
         setSelectedTimeSlot(undefined);
         setNotes('');
+        showSuccess('予約を作成しました');
       }
     } catch (error) {
-      console.error('予約作成エラー:', error);
+      // 統一エラーハンドラーでエラーを処理
+      const result = ErrorHandler.handle(error, {
+        logLevel: 'error',
+        context: { 
+          action: 'createReservation',
+          date: selectedDate,
+          timeSlot: selectedTimeSlot
+        }
+      });
+      showError(result.userMessage);
     } finally {
       setSubmitting(false);
     }
@@ -149,4 +169,4 @@ export const SimpleBookingForm = ({
       </form>
     </div>
   );
-};
+});

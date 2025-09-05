@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../stores/authStore';
 import { useCourses } from './useCourses';
 import { 
   createReservation, 
   getUserReservations, 
-  updateReservation 
+  updateReservationStatus
 } from '../lib/database/reservations';
+import { createUpdateReservationStatusData } from '../types/updates';
 import { calculateDuration } from '../utils/timeUtils';
 import type { Reservation } from '../types';
 
@@ -114,9 +115,10 @@ export const useReservations = () => {
       setLoading(true);
       setError(null);
 
-      await updateReservation(reservationId, {
-        status: 'cancelled'
-      });
+      await updateReservationStatus(
+        reservationId, 
+        createUpdateReservationStatusData('cancelled')
+      );
 
       // 予約一覧を再取得
       await fetchReservations();

@@ -143,4 +143,6 @@ const ProfileDisplay: React.FC<ProfileDisplayProps> = ({ user, onEdit }) => {
   );
 };
 
-export default ProfileDisplay;
+export default React.memo(ProfileDisplay, (prevProps, nextProps) => {
+  return prevProps.user.updatedAt === nextProps.user.updatedAt;
+});

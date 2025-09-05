@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../stores/authStore";
 import { signOut } from "../../lib/auth";
 import { getVisibleNavigationItems, getRoleDisplayName } from "../../utils/roleUtils";
 

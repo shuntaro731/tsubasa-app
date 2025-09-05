@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { User, PlanType } from '../types/index';
 import { getAllPlans } from '../lib/courseData';
 import { getAvailableRolesForRegistration, isInitialAdmin } from '../utils/roleManagement';
+import { ErrorHandler } from '../lib/errors/errorHandler';
+import { ValidationError } from '../lib/errors/types';
 
 interface ProfileFormProps {
   initialData?: Partial<User>;
@@ -35,7 +37,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     e.preventDefault();
     
     if (name.trim() === "") {
-      setError("お名前を入力してください");
+      const validationError = new ValidationError(
+        "名前が空です",
+        "お名前を入力してください",
+        "name"
+      );
+      const result = ErrorHandler.handle(validationError, { logLevel: 'warn' });
+      setError(result.userMessage);
       return;
     }
 
@@ -48,8 +56,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         selectedCourse,
       });
     } catch (error) {
-      console.error("フォーム送信エラー:", error);
-      setError("処理に失敗しました。もう一度お試しください。");
+      // 統一エラーハンドラーでエラーを処理
+      const result = ErrorHandler.handle(error, {
+        logLevel: 'error',
+        context: { action: 'profileFormSubmit', name, role, selectedCourse }
+      });
+      setError(result.userMessage);
     }
   };
 

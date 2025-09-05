@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { formatDate } from '../utils/timeUtils';
 import type { Reservation } from '../types';
 import { isFuture, isPast } from 'date-fns';
@@ -12,7 +12,7 @@ interface ReservationListProps {
 
 type FilterType = 'all' | 'upcoming' | 'past' | 'cancelled';
 
-export const ReservationList = ({ 
+export const ReservationList = React.memo(({ 
   reservations, 
   onCancel, 
   loading = false,
@@ -175,4 +175,4 @@ export const ReservationList = ({
       )}
     </div>
   );
-};
+});

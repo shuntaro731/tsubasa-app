@@ -6,6 +6,8 @@ export {
   createUser,
   getUser,
   updateUser,
+  updateProfile,
+  adminUpdateUser,
   getAllUsers,
 } from './users';
 
@@ -22,6 +24,7 @@ export {
   createTeacher,
   getAllTeachers,
   getTeacher,
+  updateTeacher,
 } from './teachers';
 
 // 予約関連
@@ -29,5 +32,7 @@ export {
   createReservation,
   getUserReservations,
   updateReservation,
+  updateReservationStatus,
+  updateReservationTime,
   getReservationsByDateAndTeacher,
 } from './reservations';

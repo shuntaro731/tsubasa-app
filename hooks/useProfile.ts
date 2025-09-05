@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { getUser, updateUser } from '../lib/database/index';
+import { useAuth } from '../stores/authStore';
+import { getUser, updateProfile as updateUserProfile } from '../lib/database/index';
 import type { User, PlanType } from '../types/index';
+import { createUpdateUserData } from '../types/updates';
+import { ErrorHandler } from '../lib/errors/errorHandler';
+import { DatabaseError, AuthError } from '../lib/errors/types';
 
 export const useProfile = () => {
   const [profile, setProfile] = useState<User | null>(null);
@@ -23,8 +26,20 @@ export const useProfile = () => {
       const userData = await getUser(firebaseUser.uid);
       setProfile(userData);
     } catch (err) {
-      console.error('プロフィール取得エラー:', err);
-      setError('プロフィール情報の取得に失敗しました');
+      // 統一エラーハンドラーでエラーを処理
+      const dbError = new DatabaseError(
+        `プロフィール取得エラー: ${err}`,
+        'getUser',
+        'プロフィール情報の取得に失敗しました',
+        { userId: firebaseUser.uid }
+      );
+      
+      const result = ErrorHandler.handle(dbError, {
+        logLevel: 'error',
+        context: { action: 'fetchProfile', userId: firebaseUser.uid }
+      });
+      
+      setError(result.userMessage);
       setProfile(null);
     } finally {
       setLoading(false);
@@ -34,23 +49,37 @@ export const useProfile = () => {
   // プロフィール情報を更新する関数
   const updateProfile = async (updates: Partial<Pick<User, 'name' | 'role' | 'selectedCourse'>>) => {
     if (!firebaseUser?.uid) {
-      throw new Error('認証が必要です');
+      const authError = new AuthError('認証が必要です', '認証が必要です');
+      ErrorHandler.handle(authError, { logLevel: 'warn' });
+      throw authError;
     }
 
     try {
       setLoading(true);
       setError(null);
 
-      await updateUser(firebaseUser.uid, updates);
+      await updateUserProfile(firebaseUser.uid, createUpdateUserData(updates));
 
       // ローカル状態も更新
       if (profile) {
         setProfile({ ...profile, ...updates });
       }
     } catch (err) {
-      console.error('プロフィール更新エラー:', err);
-      setError('プロフィールの更新に失敗しました');
-      throw err;
+      // 統一エラーハンドラーでエラーを処理
+      const dbError = new DatabaseError(
+        `プロフィール更新エラー: ${err}`,
+        'updateUser',
+        'プロフィールの更新に失敗しました',
+        { userId: firebaseUser.uid, updates }
+      );
+      
+      const result = ErrorHandler.handle(dbError, {
+        logLevel: 'error',
+        context: { action: 'updateProfile', userId: firebaseUser.uid, updates }
+      });
+      
+      setError(result.userMessage);
+      throw dbError;
     } finally {
       setLoading(false);
     }

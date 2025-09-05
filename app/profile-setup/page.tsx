@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../stores/authStore";
 import { updateUser } from "../../lib/database/index";
 import type { PlanType } from "../../types/index";
+import { createUpdateUserData } from "../../types/updates";
 import { getAllPlans } from "../../lib/courseData";
 
 const ProfileSetupPage = () => {
@@ -14,7 +15,7 @@ const ProfileSetupPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { firebaseUser, updateProfileComplete } = useAuth();
+  const { firebaseUser } = useAuth();
   const coursePlans = getAllPlans();
 
 
@@ -36,14 +37,14 @@ const ProfileSetupPage = () => {
 
     try {
       // Firestoreのユーザー情報を更新
-      await updateUser(firebaseUser.uid, {
+      await updateUser(firebaseUser.uid, createUpdateUserData({
         name: name.trim(),
         role: role,
         selectedCourse: selectedCourse,
-      });
+      }));
 
-      // AuthContextの状態を更新
-      updateProfileComplete(true);
+      // AuthContextの状態を更新（profileCompleteは自動計算されるため不要）
+      // updateProfileComplete は非推奨のため削除
 
       // プロフィール設定完了後はホームページへ
       router.push("/");
